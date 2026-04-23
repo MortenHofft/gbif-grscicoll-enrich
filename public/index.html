@@ -1,12 +1,626 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GRSciColl Enrich</title>
-  </head>
-  <body>
-    <h1>Hello World</h1>
-    <p>Welcome to gbif-grscicoll-enrich</p>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GrSciColl Admin — Data Improvements</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: #0d1117; color: #e2e8f0; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0d1117; }
+  ::-webkit-scrollbar-thumb { background: #3d4f66; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #5a6f8a; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+// ─── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bgBase:        '#0d1117',
+  bgSurface:     '#161b24',
+  bgSubtle:      '#131820',
+  bgElevated:    '#1e2530',
+  bgHover:       '#242d3a',
+  bgActive:      '#1a2540',
+  borderStrong:  '#3d4f66',
+  borderDefault: '#2d3748',
+  borderSubtle:  '#1e2530',
+  textPrimary:   '#e2e8f0',
+  textSecondary: '#b8c4d4',
+  textSubtle:    '#8b9cb8',
+  textMuted:     '#5a6f8a',
+  textDisabled:  '#3d4f66',
+  green400:  '#52b947',
+  green300:  '#6ed163',
+  greenDim:  '#1a3018',
+  greenBorder:'#245420',
+  blue:      '#4a90d9',
+  blueBg:    '#0e1e2e',
+  blueBorder:'#1e3a5c',
+  red:       '#e05252',
+  redBg:     '#2a1010',
+  redBorder: '#5c2020',
+};
+
+// ─── Icons ─────────────────────────────────────────────────────────────────────
+const Icon = ({ d, size = 15, ...rest }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...rest}>
+    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p}/>) : <path d={d}/>}
+  </svg>
+);
+const IconInstitution = () => <Icon d={["M2 14V6l6-4 6 4v8","M6 14v-4h4v4"]} />;
+const IconCollection  = () => <Icon d={["M2 4h12v10H2z","M2 8h12","M6 4v10","M10 4v10"]} />;
+const IconImprove     = () => <Icon d={["M13 2l-1 4h3L5 14l1-4H3z"]} />;
+const IconSettings    = () => <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8H1M15 8h-1M3.5 3.5l.7.7M11.8 11.8l.7.7M3.5 12.5l.7-.7M11.8 4.2l.7-.7"/></svg>;
+const IconGeo         = () => <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="7" r="2.5"/><path d="M8 2C5.2 2 3 4.2 3 7c0 3.5 5 7.5 5 7.5s5-4 5-7.5c0-2.8-2.2-5-5-5z"/></svg>;
+const IconLink        = ({ size = 15 }) => <Icon size={size} d={["M7 9a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5L8 3","M9 7a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5L8 13"]} />;
+const IconCheck       = () => <Icon d="M3 8l4 4 6-6" />;
+const IconExternal    = ({ size = 11 }) => <Icon size={size} d={["M10 2h4v4","M14 2L8 8","M7 4H3v9h9V9"]} />;
+const IconChevron     = () => <Icon d="M4 6l4 4 4-4" />;
+const IconSpinner     = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 0.8s linear infinite' }}>
+    <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+    <path d="M12 2a10 10 0 0110 10" strokeLinecap="round"/>
+    <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+  </svg>
+);
+
+// ─── Sidebar ───────────────────────────────────────────────────────────────────
+const NAV = [
+  { section: 'Tools', items: [
+    { id: 'improvements', label: 'Improvements', icon: <IconImprove />, highlight: true },
+  ]},
+];
+
+const Sidebar = ({ active, onNav }) => (
+  <div style={{ width: 220, background: C.bgSurface, borderRight: `1px solid ${C.borderDefault}`, display: 'flex', flexDirection: 'column', height: '100%', flexShrink: 0 }}>
+    <div style={{ padding: '13px 16px', borderBottom: `1px solid ${C.borderDefault}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ width: 26, height: 26, background: C.green400, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: C.bgBase, flexShrink: 0 }}>G</div>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary, lineHeight: 1.2 }}>GrSciColl</div>
+        <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.textSubtle }}>Admin</div>
+      </div>
+    </div>
+
+    <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+      {NAV.map(({ section, items }) => (
+        <div key={section}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.textSubtle, padding: '12px 16px 4px' }}>{section}</div>
+          {items.map(item => {
+            const isActive = active === item.id;
+            return (
+              <div key={item.id} onClick={() => onNav(item.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 16px', fontSize: 13, cursor: 'pointer',
+                  color: isActive ? C.green400 : C.textSecondary,
+                  background: isActive ? C.bgActive : 'transparent',
+                  fontWeight: isActive ? 500 : 400,
+                  transition: 'background 80ms, color 80ms', userSelect: 'none' }}
+                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = C.bgElevated; e.currentTarget.style.color = C.textPrimary; }}}
+                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.textSecondary; }}}
+              >
+                <span style={{ opacity: isActive ? 1 : 0.7, flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.highlight && isActive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green400, flexShrink: 0 }}/>}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+
+  </div>
+);
+
+// ─── TopBar ────────────────────────────────────────────────────────────────────
+const TopBar = ({ breadcrumb = [], actions = null }) => (
+  <div style={{ borderBottom: `1px solid ${C.borderDefault}`, padding: '0 24px', height: 48, display: 'flex', alignItems: 'center', gap: 12, background: C.bgSurface, flexShrink: 0 }}>
+    <div style={{ fontSize: 13, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6 }}>
+      {breadcrumb.map((crumb, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span style={{ color: C.textSubtle }}>/</span>}
+          <span style={{ color: i === breadcrumb.length - 1 ? C.textPrimary : C.textSecondary, fontWeight: i === breadcrumb.length - 1 ? 500 : 400 }}>
+            {crumb}
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+    <div style={{ flex: 1 }} />
+    {actions && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{actions}</div>}
+  </div>
+);
+
+// ─── Config (registry base URL from server env) ────────────────────────────────
+const useConfig = () => {
+  const [config, setConfig] = React.useState({ registryBase: 'https://registry.gbif.org' });
+  React.useEffect(() => {
+    fetch('/api/config').then(r => r.json()).then(setConfig).catch(() => {});
+  }, []);
+  return config;
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+const hasAddressData = (addr) => addr && (addr.address || addr.city || addr.postalCode || addr.country);
+
+const formatAddress = (inst) => {
+  const addr = hasAddressData(inst.address) ? inst.address : inst.mailingAddress;
+  if (!hasAddressData(addr)) return null;
+  const parts = [addr.address, addr.city, addr.province, addr.postalCode].filter(Boolean);
+  if (addr.country) parts.push(addr.country);
+  return parts.join(', ') || null;
+};
+
+const normalizeEntity = (raw, type) => ({
+  key:         raw.key,
+  name:        raw.name || '—',
+  code:        raw.code,
+  country:     raw.address?.country || raw.mailingAddress?.country || '?',
+  city:        raw.address?.city || raw.mailingAddress?.city || '',
+  street:      raw.address?.address || raw.mailingAddress?.address || null, // raw street line only
+  address:     formatAddress(raw),   // full formatted string for display
+  lat:         raw.latitude  ?? null,
+  lon:         raw.longitude ?? null,
+  homepage:    type === 'institution' ? (raw.homepage || null) : undefined,
+  institution: raw.institutionName || raw.institution || null,
+  active:      raw.active,
+  deleted:     !!raw.deleted,
+});
+
+// ─── Action state machine ──────────────────────────────────────────────────────
+const useActionState = () => {
+  const [states, setStates] = React.useState({});
+  // asyncFn must return a promise; resolving → done, rejecting → failed
+  const trigger = async (key, action, asyncFn) => {
+    setStates(s => ({ ...s, [`${key}__${action}`]: 'running' }));
+    try {
+      const result = await asyncFn();
+      setStates(s => ({ ...s, [`${key}__${action}`]: 'done' }));
+      return result;
+    } catch {
+      setStates(s => ({ ...s, [`${key}__${action}`]: 'failed' }));
+      return null;
+    }
+  };
+  const reset  = (key, action) => setStates(s => ({ ...s, [`${key}__${action}`]: 'idle' }));
+  const get    = (key, action) => states[`${key}__${action}`] || 'idle';
+  return { trigger, reset, get };
+};
+
+// ─── Action Button ─────────────────────────────────────────────────────────────
+const ActionButton = ({ label, icon, state, onTrigger, onReset, doneLabel, doneHref, disabled }) => {
+  const cfgs = {
+    idle:    { bg: C.bgElevated, border: C.borderStrong,  color: C.textSecondary, cursor: 'pointer' },
+    running: { bg: C.blueBg,     border: C.blueBorder,    color: C.blue,          cursor: 'default'  },
+    done:    { bg: C.greenDim,   border: C.greenBorder,   color: C.green300,      cursor: 'pointer'  },
+    failed:  { bg: C.redBg,      border: C.redBorder,     color: C.red,           cursor: 'pointer'  },
+  };
+  const cfg = cfgs[state] || cfgs.idle;
+  const isDisabled = disabled && state === 'idle';
+  const btnStyle = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500, borderRadius: 4, border: `1px solid ${cfg.border}`, background: cfg.bg, color: isDisabled ? C.textDisabled : cfg.color, cursor: isDisabled ? 'not-allowed' : cfg.cursor, transition: 'all 100ms', userSelect: 'none', textDecoration: 'none', opacity: isDisabled ? 0.5 : 1 };
+  const content = <>
+    {state === 'running' ? <IconSpinner size={12}/> : icon}
+    {state === 'idle'    && label}
+    {state === 'running' && 'Running…'}
+    {state === 'done'    && <><IconCheck />{doneLabel || 'Done — click to reset'}</>}
+    {state === 'failed'  && 'Failed — retry'}
+  </>;
+  // When done, render a link if we have one, otherwise a reset button
+  if (state === 'done' && doneHref) {
+    return <a href={doneHref} target="_blank" rel="noopener noreferrer" style={btnStyle}>{content}</a>;
+  }
+  return (
+    <button
+      onClick={isDisabled ? undefined : state === 'idle' ? onTrigger : state !== 'running' ? onReset : undefined}
+      style={btnStyle}
+    >{content}</button>
+  );
+};
+
+// ─── Country Tag ───────────────────────────────────────────────────────────────
+const CountryTag = ({ children }) => (
+  <span style={{ background: C.bgElevated, color: C.textSubtle, border: `1px solid ${C.borderStrong}`, borderRadius: 3, fontSize: 11, padding: '2px 7px', fontFamily: 'IBM Plex Mono, monospace', letterSpacing: '0.03em' }}>{children}</span>
+);
+
+// ─── Entity Card ───────────────────────────────────────────────────────────────
+const EntityCard = ({ entity, actions, registryBase }) => {
+  const hasCoords = entity.lat !== null && entity.lon !== null;
+  return (
+    <div style={{ background: C.bgSurface, border: `1px solid ${C.borderStrong}`, borderRadius: 4, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+
+      <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.borderDefault}`, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary, lineHeight: 1.4, wordBreak: 'break-word' }}>{entity.name}</span>
+            {registryBase && (
+              <a href={`${registryBase}/${entity.key}`} target="_blank" rel="noopener noreferrer" title="Open in registry"
+                style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 7, color: C.textMuted, verticalAlign: 'middle', transition: 'color 100ms' }}
+                onMouseEnter={e => e.currentTarget.style.color = C.green400}
+                onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
+              ><IconExternal size={11}/></a>
+            )}
+            {entity.institution && (
+              <span style={{ fontSize: 11, color: C.textSubtle }}>in {entity.institution}</span>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <code style={{ fontSize: 11, fontFamily: 'IBM Plex Mono', color: C.textSubtle, background: C.bgSubtle, border: `1px solid ${C.borderDefault}`, borderRadius: 3, padding: '1px 5px', flexShrink: 0 }}>{entity.key}</code>
+            <CountryTag>{entity.country}</CountryTag>
+            {entity.city && <span style={{ fontSize: 12, color: C.textSecondary }}>{entity.city}</span>}
+            {entity.deleted && <span style={{ fontSize: 10, background: C.redBg, color: C.red, border: `1px solid ${C.redBorder}`, borderRadius: 3, padding: '1px 6px' }}>Deleted</span>}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0 }}>
+          {hasCoords
+            ? <a href={`https://www.google.com/maps?q=${entity.lat},${entity.lon}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, borderRadius: 3, padding: '3px 8px', background: C.greenDim, border: `1px solid ${C.greenBorder}`, color: C.green300, fontFamily: 'IBM Plex Mono', textDecoration: 'none', transition: 'border-color 100ms' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = C.green400}
+                onMouseLeave={e => e.currentTarget.style.borderColor = C.greenBorder}
+              >
+                <IconGeo />{entity.lat.toFixed(4)}, {entity.lon.toFixed(4)}
+              </a>
+            : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, borderRadius: 3, padding: '3px 8px', background: C.bgElevated, border: `1px solid ${C.borderStrong}`, color: C.textSubtle }}>
+                <IconGeo />No coordinates
+              </span>
+          }
+        </div>
+      </div>
+
+      <div style={{ padding: '9px 16px', borderBottom: `1px solid ${C.borderDefault}`, display: 'flex', gap: 32, flexWrap: 'wrap', background: C.bgBase }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flex: 1, minWidth: 180 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.textSubtle, flexShrink: 0 }}>Address</span>
+          <span style={{ fontSize: 12, color: entity.address ? C.textSecondary : C.textMuted, fontStyle: entity.address ? 'normal' : 'italic' }}>
+            {entity.address || 'Not provided'}
+          </span>
+        </div>
+        {entity.homepage !== undefined && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.textSubtle, flexShrink: 0 }}>Homepage</span>
+            {entity.homepage
+              ? <a href={entity.homepage} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: C.green400, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <IconLink size={11}/>{entity.homepage.replace(/^https?:\/\//, '')}
+                </a>
+              : <span style={{ fontSize: 12, color: C.textMuted, fontStyle: 'italic' }}>Not provided</span>
+            }
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: '9px 16px', background: C.bgSubtle, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.textSubtle, flexShrink: 0 }}>Improvements</span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {actions.length === 0
+            ? <span style={{ fontSize: 12, color: C.textMuted, fontStyle: 'italic' }}>No improvements available</span>
+            : actions.map(a => <ActionButton key={a.id} {...a} />)
+          }
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Loading skeleton ──────────────────────────────────────────────────────────
+const SkeletonCard = () => (
+  <div style={{ background: C.bgSurface, border: `1px solid ${C.borderStrong}`, borderRadius: 4, overflow: 'hidden', opacity: 0.5 }}>
+    <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.borderDefault}` }}>
+      <div style={{ height: 14, width: '60%', background: C.bgElevated, borderRadius: 3, marginBottom: 8 }} />
+      <div style={{ height: 11, width: '35%', background: C.bgElevated, borderRadius: 3 }} />
+    </div>
+    <div style={{ padding: '9px 16px', background: C.bgBase, height: 36 }} />
+    <div style={{ padding: '9px 16px', background: C.bgSubtle, height: 36 }} />
+  </div>
+);
+
+// ─── API calls ─────────────────────────────────────────────────────────────────
+const inferCoordinates = async (entityType, key, { mode = 'suggest', token = '' } = {}) => {
+  const endpoint = mode === 'update' ? 'update-coordinates' : 'infer-coordinates';
+  const headers  = mode === 'update' && token ? { Authorization: `Bearer ${token}` } : {};
+  const res  = await fetch(`/api/grscicoll/${entityType}/${key}/${endpoint}`, { method: 'POST', headers });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || 'Failed');
+  return { ...json, mode };
+};
+
+// An institution is eligible for geocoding only when it has no coordinates yet
+// AND the address is specific enough to produce a reliable result.
+const isGeocodable = (e) => {
+  return e.lat === null &&
+  e.street &&    // actual street line from the API, not the formatted display string
+  e.country && e.country !== '?';
+};
+
+// ─── Improvements Screen ───────────────────────────────────────────────────────
+const ImprovementsScreen = () => {
+  const saved = JSON.parse(localStorage.getItem('grscicoll-improvements') || '{}');
+  const [filterInput, setFilterInput]     = React.useState(saved.filter || 'hasCoordinate=false&limit=20');
+  const [appliedFilter, setAppliedFilter] = React.useState(saved.filter || 'hasCoordinate=false&limit=20');
+  const [results, setResults]             = React.useState([]);
+  const [meta, setMeta]                   = React.useState({ count: 0, endOfRecords: true, offset: 0, limit: 20 });
+  const [loading, setLoading]             = React.useState(false);
+  const [loadingMore, setLoadingMore]     = React.useState(false);
+  const [error, setError]                 = React.useState(null);
+  const [batchState, setBatchState]       = React.useState('idle');
+  const { trigger, reset, get }           = useActionState();
+  const { registryBase }                  = useConfig();
+  const [batchProgress, setBatchProgress]   = React.useState({ done: 0, total: 0 });
+  const [suggestionKeys, setSuggestionKeys] = React.useState({});
+  const [mode, setMode]                     = React.useState('suggest');  // 'suggest' | 'update'
+  const [authToken, setAuthToken]           = React.useState('');
+  const [showToken, setShowToken]           = React.useState(false);
+
+  const geocodeEntity = async (key) => {
+    const result = await trigger(key, 'geocode', () => inferCoordinates('institution', key, { mode, token: authToken }));
+    if (result?.latitude !== undefined) {
+      setResults(prev => prev.map(e => e.key === key ? { ...e, lat: result.latitude, lon: result.longitude } : e));
+    }
+    if (result?.suggestionKey) {
+      setSuggestionKeys(prev => ({ ...prev, [key]: { key: result.suggestionKey, already: result.alreadySuggested } }));
+    }
+  };
+
+  const persist = (updates) => {
+    const prev = JSON.parse(localStorage.getItem('grscicoll-improvements') || '{}');
+    localStorage.setItem('grscicoll-improvements', JSON.stringify({ ...prev, ...updates }));
+  };
+
+  const fetchData = async (filter, offset = 0) => {
+    const isLoadMore = offset > 0;
+    isLoadMore ? setLoadingMore(true) : setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams(filter);
+      if (offset > 0) params.set('offset', String(offset));
+      const res = await fetch(`/api/grscicoll/institution?${params}`);
+      if (!res.ok) throw new Error(`API responded with ${res.status}`);
+      const json = await res.json();
+      const normalized = (json.results || []).map(r => normalizeEntity(r, 'institution'));
+      if (isLoadMore) {
+        setResults(prev => [...prev, ...normalized]);
+      } else {
+        setResults(normalized);
+      }
+      setMeta({ count: json.count, endOfRecords: json.endOfRecords, offset: json.offset, limit: json.limit });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      isLoadMore ? setLoadingMore(false) : setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData(appliedFilter, 0);
+    setBatchState('idle');
+  }, [appliedFilter]);
+
+  const applyFilter = () => {
+    setAppliedFilter(filterInput);
+    persist({ filter: filterInput });
+  };
+
+  const loadMore = () => {
+    fetchData(appliedFilter, meta.offset + meta.limit);
+  };
+
+  const getActions = (entity) => {
+    const acts = [];
+    if (isGeocodable(entity)) {
+      const suggestion = suggestionKeys[entity.key];
+      const isUpdate   = mode === 'update';
+      acts.push({
+        id: 'geocode',
+        label:     isUpdate ? 'Apply coordinates' : 'Infer coordinates',
+        icon:      <IconGeo />,
+        state:     get(entity.key, 'geocode'),
+        disabled:  isUpdate && !authToken,
+        onTrigger: () => geocodeEntity(entity.key),
+        onReset:   () => reset(entity.key, 'geocode'),
+        doneLabel: isUpdate
+          ? 'Updated ↗'
+          : (suggestion ? (suggestion.already ? 'Already suggested ↗' : 'Suggestion created ↗') : 'Done — click to reset'),
+        doneHref: isUpdate
+          ? `${registryBase}/institution/${entity.key}`
+          : (suggestion ? `${registryBase}/institution/${entity.key}/suggestions/${suggestion.key}` : null),
+      });
+    }
+    return acts;
+  };
+
+  const geocodable = results.filter(e => isGeocodable(e));
+
+  const triggerBatch = async () => {
+    if (batchState !== 'idle') return;
+    const targets = results.filter(e => isGeocodable(e));
+    setBatchState('running');
+    setBatchProgress({ done: 0, total: targets.length });
+    for (const entity of targets) {
+      await geocodeEntity(entity.key);
+      setBatchProgress(p => ({ ...p, done: p.done + 1 }));
+    }
+    setBatchState('done');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <TopBar breadcrumb={['GrSciColl Admin', 'Improvements']} />
+
+      {/* Filter + mode bar */}
+      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${C.borderDefault}`, background: C.bgBase, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+
+      {/* Mode row */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.textSubtle, flexShrink: 0 }}>Mode</span>
+        {/* Segmented toggle */}
+        <div style={{ display: 'flex', borderRadius: 4, border: `1px solid ${C.borderStrong}`, overflow: 'hidden', flexShrink: 0 }}>
+          {[['suggest', 'Suggest change'], ['update', 'Apply directly']].map(([m, label]) => (
+            <button key={m} onClick={() => setMode(m)} style={{
+              padding: '5px 13px', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: mode === m ? 500 : 400,
+              background: mode === m ? C.bgActive : C.bgElevated,
+              color: mode === m ? C.green400 : C.textSecondary,
+              border: 'none', borderRight: m === 'suggest' ? `1px solid ${C.borderStrong}` : 'none',
+              cursor: 'pointer', transition: 'background 80ms, color 80ms',
+            }}>{label}</button>
+          ))}
+        </div>
+        {/* Token input — only shown in update mode */}
+        {mode === 'update' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, maxWidth: 420 }}>
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={authToken}
+              onChange={e => setAuthToken(e.target.value)}
+              placeholder="Bearer token…"
+              style={{ flex: 1, fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.bgElevated, border: `1px solid ${authToken ? C.green400 : C.borderStrong}`, borderRadius: 4, color: C.textPrimary, padding: '5px 10px', outline: 'none', transition: 'border-color 100ms' }}
+              onFocus={e => e.target.style.borderColor = C.green400}
+              onBlur={e => e.target.style.borderColor = authToken ? C.green400 : C.borderStrong}
+            />
+            <button onClick={() => setShowToken(s => !s)} title={showToken ? 'Hide token' : 'Show token'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 11, padding: '4px 6px', fontFamily: 'IBM Plex Sans' }}>
+              {showToken ? 'hide' : 'show'}
+            </button>
+          </div>
+        )}
+        {mode === 'update' && !authToken && (
+          <span style={{ fontSize: 11, color: C.textMuted, fontStyle: 'italic' }}>Token required to apply directly</span>
+        )}
+      </div>
+
+      {/* Filter row */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.textSubtle, flexShrink: 0 }}>Filter</span>
+        <div style={{ position: 'relative', flex: 1, maxWidth: 560 }}>
+          <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 10, fontFamily: 'IBM Plex Mono', color: C.textMuted, pointerEvents: 'none' }}>?</span>
+          <input
+            value={filterInput}
+            onChange={e => setFilterInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && applyFilter()}
+            placeholder="hasCoordinate=false&country=DE&limit=20"
+            style={{ width: '100%', fontFamily: 'IBM Plex Mono', fontSize: 12, background: C.bgElevated, border: `1px solid ${C.borderStrong}`, borderRadius: 4, color: C.textPrimary, padding: '6px 10px 6px 20px', outline: 'none', transition: 'border-color 100ms' }}
+            onFocus={e => e.target.style.borderColor = C.green400}
+            onBlur={e => e.target.style.borderColor = C.borderStrong}
+          />
+        </div>
+        <button
+          onClick={applyFilter}
+          style={{ padding: '6px 14px', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500, background: C.green400, color: C.bgBase, border: 'none', borderRadius: 4, cursor: 'pointer' }}
+        >Apply</button>
+        {!loading && (
+          <span style={{ fontSize: 12, color: C.textSubtle, flexShrink: 0 }}>
+            <strong style={{ color: C.textSecondary, fontWeight: 600 }}>{meta.count.toLocaleString()}</strong> total
+            {results.length < meta.count && <span> · showing {results.length}</span>}
+          </span>
+        )}
+      </div>{/* end filter row */}
+      </div>{/* end filter+mode bar */}
+
+      {/* Batch action bar */}
+      {!loading && geocodable.length > 0 && (
+        <div style={{ padding: '9px 24px', background: C.bgSubtle, borderBottom: `1px solid ${C.borderDefault}`, display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+          <div style={{ flex: 1, fontSize: 12, color: C.textSubtle }}>
+            <strong style={{ color: C.textSecondary, fontWeight: 600 }}>{geocodable.length}</strong> institutions have an address but no coordinates
+          </div>
+          <button
+            onClick={triggerBatch}
+            disabled={batchState !== 'idle' || (mode === 'update' && !authToken)}
+            title={mode === 'update' && !authToken ? 'Enter a bearer token to apply directly' : undefined}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500, borderRadius: 4,
+              border: `1px solid ${batchState === 'running' ? C.blueBorder : C.greenBorder}`,
+              background: batchState === 'running' ? C.blueBg : C.greenDim,
+              color: batchState === 'running' ? C.blue : batchState === 'done' ? C.green300 : C.green400,
+              cursor: (batchState === 'idle' && !(mode === 'update' && !authToken)) ? 'pointer' : 'default',
+              transition: 'all 120ms', opacity: (batchState === 'done' || (mode === 'update' && !authToken)) ? 0.45 : 1 }}
+          >
+            {batchState === 'running' && <IconSpinner size={12}/>}
+            {batchState === 'done'    && <IconCheck />}
+            {batchState === 'idle'    && <IconGeo />}
+            {batchState === 'idle'    && (mode === 'update' ? `Update all ${geocodable.length} institutions` : `Geocode all ${geocodable.length} institutions`)}
+            {batchState === 'running' && `${mode === 'update' ? 'Updating' : 'Geocoding'} ${batchProgress.done + 1}/${batchProgress.total}…`}
+            {batchState === 'done'    && (mode === 'update' ? 'Update complete' : 'Geocoding complete')}
+          </button>
+        </div>
+      )}
+
+      {/* Card list */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 900 }}>
+            {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
+          </div>
+        ) : error ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, gap: 12 }}>
+            <div style={{ fontSize: 13, color: C.red }}>{error}</div>
+            <button onClick={() => fetchData(appliedFilter, 0)} style={{ padding: '6px 14px', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500, background: C.bgElevated, color: C.textSecondary, border: `1px solid ${C.borderStrong}`, borderRadius: 4, cursor: 'pointer' }}>Retry</button>
+          </div>
+        ) : results.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, gap: 12 }}>
+            <div style={{ width: 40, height: 40, border: `1px dashed ${C.borderStrong}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMuted }}>
+              <IconCheck size={18} />
+            </div>
+            <div style={{ fontSize: 13, color: C.textMuted }}>No results match the current filter</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 900 }}>
+            {results.map(entity => (
+              <EntityCard key={entity.key} entity={entity} actions={getActions(entity)} registryBase={registryBase ? `${registryBase}/institution` : null} />
+            ))}
+
+            {/* Load more */}
+            {!meta.endOfRecords && (
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 18px', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500, borderRadius: 4, border: `1px solid ${C.borderStrong}`, background: C.bgElevated, color: C.textSecondary, cursor: loadingMore ? 'default' : 'pointer' }}
+                >
+                  {loadingMore ? <><IconSpinner size={12}/>Loading…</> : <><IconChevron />Load more</>}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Placeholder Screen ────────────────────────────────────────────────────────
+const PlaceholderScreen = ({ name }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <TopBar breadcrumb={['GrSciColl Admin', name]} />
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 8, border: `1px dashed ${C.borderStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMuted }}>
+        <Icon d="M8 2v12M2 8h12" size={20} />
+      </div>
+      <div style={{ fontSize: 14, color: C.textMuted }}>{name} — coming soon</div>
+    </div>
+  </div>
+);
+
+// ─── Root ──────────────────────────────────────────────────────────────────────
+const App = () => {
+  const [screen, setScreen] = React.useState(localStorage.getItem('grscicoll-screen') || 'improvements');
+  const navigate = (s) => { setScreen(s); localStorage.setItem('grscicoll-screen', s); };
+  const renderMain = () => {
+    if (screen === 'improvements') return <ImprovementsScreen />;
+    return <PlaceholderScreen name={screen.charAt(0).toUpperCase() + screen.slice(1)} />;
+  };
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Sidebar active={screen} onNav={navigate} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: C.bgBase }}>
+        {renderMain()}
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
 </html>

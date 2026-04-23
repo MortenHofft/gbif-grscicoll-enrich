@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "apply-suggestions": "node scripts/apply-geocoding-suggestions.js",
+    "apply-suggestions:dry": "node scripts/apply-geocoding-suggestions.js --dry-run",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

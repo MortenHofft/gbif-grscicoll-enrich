@@ -3,6 +3,7 @@ node_modules/
 
 # Environment variables (keep secrets out of version control)
 .env
+.claude
 
 # Logs
 logs/
